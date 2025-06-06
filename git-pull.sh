@@ -10,5 +10,5 @@ echo "pulling the latest code in $READ_PATH"
 if git pull; then
     echo "pull was successfull"
 else
-    echo "pull failed"
+    echo "pull failed try again"
 fi
