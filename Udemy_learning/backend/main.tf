@@ -2,14 +2,11 @@ provider "aws" {
   region  = "eu-north-1"
 }
 
-@REM bucket = "sec-pipeline-terraform-file" 
-@REM     key    = "state.tf"
-@REM     region = "eu-north-1"
-@REM     dynamodb_table= "terraform-state-lock"
+
 
 
 resource "aws_s3_bucket" "s3_bucket" {
-  bucket = "sec-pipeline-terraform-file"
+  bucket = "sec-pipeline-terraform-statefile"
 } 
 
 
