@@ -42,3 +42,79 @@ resource "aws_subnet" "private" {
     Type        = "Private"
   }
 }
+
+# Internet Gateway
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name        = "igw-${var.environment}"
+    Environment = var.environment
+  }
+}
+#
+resource "aws_eip" "nat" {
+  domain = "vpc"
+  depends_on = [aws_internet_gateway.main]
+  
+  tags = {
+    Name        = "eip-nat-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+resource "aws_nat_gateway" "main" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id
+  depends_on    = [aws_internet_gateway.main]
+
+  tags = {
+    Name        = "nat-gateway-${var.environment}"
+    Environment = var.environment
+  }
+}
+# Public Route Table
+
+# Public route table (routes to Internet Gateway)
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+  
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
+  }
+  
+  tags = {
+    Name        = "public-rt-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# Private route table (routes to NAT Gateway)
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+  
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.main.id
+  }
+  
+  tags = {
+    Name        = "private-rt-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# Associate public subnets with public route table
+resource "aws_route_table_association" "public" {
+  count          = length(aws_subnet.public)
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}
+
+# Associate private subnets with private route table
+resource "aws_route_table_association" "private" {
+  count          = length(aws_subnet.private)
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
+}
