@@ -118,3 +118,111 @@ resource "aws_route_table_association" "private" {
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private.id
 }
+# creating security group
+resource "aws_security_group" "public_sg" {
+  name        = "public-sg-${var.environment}"
+  description = "Security group for public EC2 instance"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  # Restrict to your IP in production
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+      }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "public-sg-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+resource "aws_security_group" "private_sg" {
+  name        = "private-sg-${var.environment}"
+  description = "Security group for private EC2 instance"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [aws_security_group.public_sg.id]  # Only from public SG
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "private-sg-${var.environment}"
+    Environment = var.environment
+  }
+}
+# EC2 instance in public subnet
+resource "aws_instance" "public" {
+  ami                    = var.ami_id
+  instance_type          = "t3.micro"
+  key_name               = var.key_pair_name
+  vpc_security_group_ids = [aws_security_group.public_sg.id]
+  subnet_id              = aws_subnet.public[0].id
+
+  associate_public_ip_address = true
+
+  root_block_device {
+    volume_type = "gp3"
+    volume_size = 20
+    encrypted   = true
+  }
+
+  tags = {
+    Name        = "public-ec2-${var.environment}"
+    Environment = var.environment
+    Type        = "Public"
+  }
+}
+
+# EC2 instance in private subnet
+resource "aws_instance" "private" {
+  ami                    = var.ami_id
+  instance_type          = "t3.micro"
+  key_name               = var.key_pair_name
+  vpc_security_group_ids = [aws_security_group.private_sg.id]
+  subnet_id              = aws_subnet.private[0].id
+
+  associate_public_ip_address = false
+
+  root_block_device {
+    volume_type = "gp3"
+    volume_size = 20
+    encrypted   = true
+  }
+
+  tags = {
+    Name        = "private-ec2-${var.environment}"
+    Environment = var.environment
+    Type        = "Private"
+  }
+}

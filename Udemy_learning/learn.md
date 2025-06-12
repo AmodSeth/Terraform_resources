@@ -13,3 +13,7 @@ NAT Gateway - Allows private subnets to access internet (outbound only)
 Public Route Table - Routes public subnet traffic to Internet Gateway
 Private Route Table - Routes private subnet traffic to NAT Gateway
 Route Table Associations - Links subnets to their respective route tables (public subnets → public RT, private subnets → private RT)
+
+uat-5:
+--> new Resources Added:
+security group
